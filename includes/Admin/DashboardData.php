@@ -50,12 +50,25 @@ class DashboardData
         $class_count = $wpdb->get_var("SELECT COUNT(*) FROM $this->table_classes");
         $result_count = $wpdb->get_var("SELECT COUNT(*) FROM $this->table_results");
 
-        echo '<div class="main">';
-        echo '<ul>';
-        echo '<li class="post-count"><a href="' . admin_url('admin.php?page=boniedu-students') . '">' . $student_count . ' Students</a></li>';
-        echo '<li class="page-count"><a href="' . admin_url('admin.php?page=boniedu-classes') . '">' . $class_count . ' Classes</a></li>';
-        echo '<li class="comment-count"><a href="' . admin_url('admin.php?page=boniedu-results') . '">' . $result_count . ' Results</a></li>';
-        echo '</ul>';
+        echo '<div class="boniedu-card" style="margin-top:0; padding: 1rem; border:none; box-shadow:none;">';
+        echo '<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; text-align: center;">';
+
+        echo '<div style="background: var(--boni-bg); padding: 10px; border-radius: var(--boni-radius);">';
+        echo '<strong style="display:block; font-size: 1.5rem; color: var(--boni-primary);">' . $student_count . '</strong>';
+        echo '<a href="' . admin_url('admin.php?page=boniedu-students') . '" style="text-decoration:none; color: var(--boni-text-muted);">Students</a>';
+        echo '</div>';
+
+        echo '<div style="background: var(--boni-bg); padding: 10px; border-radius: var(--boni-radius);">';
+        echo '<strong style="display:block; font-size: 1.5rem; color: var(--boni-secondary);">' . $class_count . '</strong>';
+        echo '<a href="' . admin_url('admin.php?page=boniedu-classes') . '" style="text-decoration:none; color: var(--boni-text-muted);">Classes</a>';
+        echo '</div>';
+
+        echo '<div style="background: var(--boni-bg); padding: 10px; border-radius: var(--boni-radius);">';
+        echo '<strong style="display:block; font-size: 1.5rem; color: var(--boni-text-main);">' . $result_count . '</strong>';
+        echo '<a href="' . admin_url('admin.php?page=boniedu-results') . '" style="text-decoration:none; color: var(--boni-text-muted);">Results</a>';
+        echo '</div>';
+
+        echo '</div>';
         echo '</div>';
     }
 
