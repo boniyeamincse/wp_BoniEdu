@@ -27,6 +27,9 @@ class Admin
 
         require_once BONIEDU_PLUGIN_DIR . 'includes/Admin/Subjects.php';
         $this->subjects = new Subjects($this->plugin_name, $this->version);
+
+        require_once BONIEDU_PLUGIN_DIR . 'includes/Admin/Students.php';
+        $this->students = new Students($this->plugin_name, $this->version);
     }
 
     /**
