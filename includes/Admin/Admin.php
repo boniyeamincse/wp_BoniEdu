@@ -63,6 +63,14 @@ class Admin
         add_action('admin_post_boniedu_download_certificate', array($this, 'handle_download_certificate'));
         add_action('admin_post_boniedu_download_marksheet', array($this, 'handle_download_marksheet'));
         add_action('admin_post_boniedu_download_admit_card', array($this, 'handle_download_admit_card'));
+
+        // Self-heal: Ensure Admin has capabilities if they were added while plugin was active
+        add_action('admin_init', function () {
+            if (current_user_can('administrator') && !current_user_can('manage_boniedu_academic')) {
+                require_once BONIEDU_PLUGIN_DIR . 'includes/Core/Roles.php';
+                \BoniEdu\Core\Roles::add_roles();
+            }
+        });
     }
 
     /**
