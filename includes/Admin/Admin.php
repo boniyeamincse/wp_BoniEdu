@@ -78,7 +78,8 @@ class Admin
      */
     public function enqueue_styles()
     {
-        // wp_enqueue_style( $this->plugin_name, plugin_dir_url( __FILE__ ) . 'css/boniedu-admin.css', array(), $this->version, 'all' );
+        wp_enqueue_style($this->plugin_name, plugin_dir_url(dirname(dirname(__FILE__))) . 'assets/css/boniedu-admin.css', array(), $this->version, 'all');
+        wp_enqueue_script($this->plugin_name, plugin_dir_url(dirname(dirname(__FILE__))) . 'assets/js/boniedu-admin.js', array('jquery'), $this->version, false);
     }
 
     /**

@@ -62,7 +62,8 @@ class Settings
             'boniedu_fields_section',
             'Rename Fields',
             function () {
-                echo '<p>Rename the labels for the student information fields.</p>'; },
+                echo '<p>Rename the labels for the student information fields.</p>';
+            },
             $this->plugin_name . '_fields'
         );
 
@@ -83,7 +84,8 @@ class Settings
             'boniedu_fields_visibility_section',
             'Fields Visibility',
             function () {
-                echo '<p>Check the box to HIDE the field.</p>'; },
+                echo '<p>Check the box to HIDE the field.</p>';
+            },
             $this->plugin_name . '_fields_hide_show'
         );
 
@@ -103,7 +105,8 @@ class Settings
             'boniedu_subjects_section',
             'Subject Configurations',
             function () {
-                echo '<p>Configure labels for each subject column.</p>'; },
+                echo '<p>Configure labels for each subject column.</p>';
+            },
             $this->plugin_name . '_subjects'
         );
 
@@ -126,11 +129,40 @@ class Settings
                 'no_subjects_warning',
                 'No Subjects Configured',
                 function () {
-                    echo '<p style="color:red;">Please set "Total Subjects" in the Total Subjects tab first.</p>'; },
+                    echo '<p style="color:red;">Please set "Total Subjects" in the Total Subjects tab first.</p>';
+                },
                 $this->plugin_name . '_subjects',
                 'boniedu_subjects_section'
             );
         }
+
+        // -- Subject Validation Tab --
+        add_settings_section(
+            'boniedu_subject_validation_section',
+            'Subject Marks Validation',
+            function () {
+                echo '<p>Set global validation rules for marks entry.</p>';
+            },
+            $this->plugin_name . '_subject_validation'
+        );
+
+        add_settings_field(
+            'default_full_mark',
+            'Default Full Marks',
+            array($this, 'render_number_field'),
+            $this->plugin_name . '_subject_validation',
+            'boniedu_subject_validation_section',
+            array('key' => 'default_full_mark', 'default' => 100)
+        );
+
+        add_settings_field(
+            'default_pass_mark',
+            'Default Pass Marks',
+            array($this, 'render_number_field'),
+            $this->plugin_name . '_subject_validation',
+            'boniedu_subject_validation_section',
+            array('key' => 'default_pass_mark', 'default' => 33)
+        );
     }
 
     private function get_default_fields()
@@ -194,6 +226,14 @@ class Settings
             }
         }
 
+        // 5. Validation
+        if (isset($input['default_full_mark'])) {
+            $new_input['default_full_mark'] = intval($input['default_full_mark']);
+        }
+        if (isset($input['default_pass_mark'])) {
+            $new_input['default_pass_mark'] = intval($input['default_pass_mark']);
+        }
+
         return $new_input;
     }
 
@@ -210,6 +250,15 @@ class Settings
         $val = isset($options['total_subjects_count']) ? intval($options['total_subjects_count']) : 0;
         echo "<input type='number' name='{$this->option_name}[total_subjects_count]' value='$val' class='regular-text' />";
         echo " <span class='description'>Change total subjects.</span>";
+    }
+
+    public function render_number_field($args)
+    {
+        $options = get_option($this->option_name);
+        $key = $args['key'];
+        $default = isset($args['default']) ? $args['default'] : '';
+        $val = isset($options[$key]) ? intval($options[$key]) : $default;
+        echo "<input type='number' name='{$this->option_name}[$key]' value='$val' class='regular-text' />";
     }
 
     public function render_field_text_input($args)
@@ -262,7 +311,7 @@ class Settings
                 <?php endforeach; ?>
             </h2>
 
-            <div class="card" style="padding: 20px; margin-top: 20px;">
+            <div class="card boniedu-card" style="padding: 20px; margin-top: 20px;">
                 <form action="options.php" method="post">
                     <?php
                     settings_fields($this->option_group);
@@ -285,8 +334,11 @@ class Settings
                             do_settings_sections($this->plugin_name . '_subjects');
                             break;
 
-                        case 'fields_validation':
                         case 'subject_validation':
+                            do_settings_sections($this->plugin_name . '_subject_validation');
+                            break;
+
+                        case 'fields_validation':
                         case 'subjects_hide_show':
                         case 'edit_cysg':
                         case 'page_template':

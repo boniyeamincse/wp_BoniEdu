@@ -1,0 +1,98 @@
+:root {
+    --boni-primary: #4f46e5; /* Indigo 600 */
+    --boni-primary-hover: #4338ca; /* Indigo 700 */
+    --boni-secondary: #0ea5e9; /* Sky 500 */
+    --boni-bg: #f9fafb; /* Gray 50 */
+    --boni-card-bg: #ffffff;
+    --boni-text-main: #111827; /* Gray 900 */
+    --boni-text-muted: #6b7280; /* Gray 500 */
+    --boni-border: #e5e7eb; /* Gray 200 */
+    --boni-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    --boni-radius: 0.5rem;
+}
+
+body {
+    background-color: var(--boni-bg);
+    color: var(--boni-text-main);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+.boniedu-card {
+    background: var(--boni-card-bg);
+    border-radius: var(--boni-radius);
+    box-shadow: var(--boni-shadow);
+    padding: 2rem;
+    margin-top: 20px;
+    border: 1px solid var(--boni-border);
+}
+
+.boniedu-card h1, .boniedu-card h2, .boniedu-card h3 {
+    margin-top: 0;
+}
+
+/* Tab Styling Overrides */
+.nav-tab-wrapper {
+    border-bottom: 2px solid var(--boni-border) !important;
+}
+
+.nav-tab {
+    border: none !important;
+    background: transparent !important;
+    color: var(--boni-text-muted) !important;
+    font-weight: 500 !important;
+    margin-left: 0.5rem !important;
+    margin-right: 0.5rem !important;
+    padding: 0.75rem 1rem !important;
+    transition: all 0.2s ease;
+    border-radius: var(--boni-radius) var(--boni-radius) 0 0;
+}
+
+.nav-tab:hover {
+    color: var(--boni-primary) !important;
+    background: #eef2ff !important; /* Indigo 50 */
+}
+
+.nav-tab-active {
+    color: var(--boni-primary) !important;
+    border-bottom: 2px solid var(--boni-primary) !important;
+    background: transparent !important;
+}
+
+/* Button Overrides */
+.button-primary {
+    background: var(--boni-primary) !important;
+    border-color: var(--boni-primary) !important;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    transition: background-color 0.2s;
+    font-weight: 500;
+}
+
+.button-primary:hover {
+    background: var(--boni-primary-hover) !important;
+}
+
+/* Form inputs */
+input[type=text], input[type=number], input[type=email], select, textarea {
+    border: 1px solid var(--boni-border);
+    border-radius: 0.375rem; /* 6px */
+    padding: 0.5rem 0.75rem;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+
+input[type=text]:focus, input[type=number]:focus, select:focus, textarea:focus {
+    border-color: var(--boni-primary);
+    box-shadow: 0 0 0 1px var(--boni-primary);
+    outline: 2px solid transparent;
+    outline-offset: 2px;
+}
+
+/* Badge / Success Messages */
+.notice-success {
+    border-left-color: var(--boni-primary) !important;
+    background: #f0fdf4 !important; /* Green 50 */
+}
+
+.notice-error {
+    border-left-color: #ef4444 !important; /* Red 500 */
+    background: #fef2f2 !important; /* Red 50 */
+}
