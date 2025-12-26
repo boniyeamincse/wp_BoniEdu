@@ -54,10 +54,25 @@ class Results
             $marks_data = $_POST['marks']; // array( student_id => marks )
 
             if (!empty($marks_data) && is_array($marks_data)) {
+                // Ensure Calculator class is available
+                if (!class_exists('BoniEdu\Core\Calculator')) {
+                    require_once BONIEDU_PLUGIN_DIR . 'includes/Core/Calculator.php';
+                }
+
                 foreach ($marks_data as $student_id => $marks) {
                     $student_id = intval($student_id);
                     $marks = floatval($marks);
                     $is_absent = isset($_POST['absent'][$student_id]) ? 1 : 0;
+
+                    // Calculate Grade & GPA
+                    $grade_letter = \BoniEdu\Core\Calculator::get_grade_letter($marks);
+                    $grade_point = \BoniEdu\Core\Calculator::get_grade_point($marks);
+
+                    if ($is_absent) {
+                        $marks = 0;
+                        $grade_letter = 'F';
+                        $grade_point = 0.00;
+                    }
 
                     // Check if result exists
                     $existing_id = $wpdb->get_var($wpdb->prepare(
@@ -73,6 +88,8 @@ class Results
                         'subject_id' => $subject_id,
                         'exam_type' => $exam_type,
                         'marks_obtained' => $marks,
+                        'grade_letter' => $grade_letter,
+                        'grade_point' => $grade_point,
                         'is_absent' => $is_absent,
                         'updated_at' => current_time('mysql')
                     );
@@ -121,7 +138,8 @@ class Results
                                 <option value="">-- Select Class --</option>
                                 <?php foreach ($classes as $c): ?>
                                     <option value="<?php echo $c->id; ?>" <?php selected($selected_class, $c->id); ?>>
-                                        <?php echo esc_html($c->name); ?></option>
+                                        <?php echo esc_html($c->name); ?>
+                                    </option>
                                 <?php endforeach; ?>
                             </select>
                         </div>
@@ -136,7 +154,8 @@ class Results
                                     <option value="0">All Sections</option>
                                     <?php foreach ($sections as $s): ?>
                                         <option value="<?php echo $s->id; ?>" <?php selected($selected_section, $s->id); ?>>
-                                            <?php echo esc_html($s->name); ?></option>
+                                            <?php echo esc_html($s->name); ?>
+                                        </option>
                                     <?php endforeach; ?>
                                 </select>
                             </div>
@@ -147,7 +166,8 @@ class Results
                                     <option value="">-- Select Subject --</option>
                                     <?php foreach ($subjects as $sub): ?>
                                         <option value="<?php echo $sub->id; ?>" <?php selected($selected_subject, $sub->id); ?>>
-                                            <?php echo esc_html($sub->name); ?></option>
+                                            <?php echo esc_html($sub->name); ?>
+                                        </option>
                                     <?php endforeach; ?>
                                 </select>
                             </div>
