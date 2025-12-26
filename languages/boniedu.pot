@@ -1,0 +1,18 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: BoniEdu Result Manager 1.0.0\n"
+"Report-Msgid-Bugs-To: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"POT-Creation-Date: 2024-01-01 12:00+0000\n"
+"PO-Revision-Date: 2024-01-01 12:00+0000\n"
+"X-Domain: boniedu\n"
+
+msgid "BoniEdu Result Manager"
+msgstr ""
+
+msgid "Settings"
+msgstr ""

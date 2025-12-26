@@ -34,7 +34,8 @@ class BoniEdu
 
     private function set_locale()
     {
-        // Localization will be implemented in Module 05
+        $plugin_i18n = new I18n();
+        $this->loader->add_action('plugins_loaded', $plugin_i18n, 'load_plugin_textdomain');
     }
 
     private function define_admin_hooks()
