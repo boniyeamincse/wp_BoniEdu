@@ -10,8 +10,21 @@ class Settings
 
     private $plugin_name;
     private $version;
-    private $option_group = 'boniedu_settings_group';
-    private $option_name = 'boniedu_settings';
+    private $option_group = 'boniedu_result_settings_group';
+    private $option_name = 'boniedu_result_settings';
+
+    private $tabs = array(
+        'total_subjects' => 'Total Subjects',
+        'fields' => 'Fields',
+        'subjects' => 'Subjects',
+        'fields_validation' => 'Fields Validation',
+        'subject_validation' => 'Subject Validation',
+        'fields_hide_show' => 'Fields Hide/Show',
+        'subjects_hide_show' => 'Subjects Hide/Show',
+        'edit_cysg' => 'Edit CYSG',
+        'page_template' => 'Page Template',
+        'search_form' => 'Search Form'
+    );
 
     public function __construct($plugin_name, $version)
     {
@@ -27,127 +40,107 @@ class Settings
             array($this, 'sanitize_settings')
         );
 
-        // General Section
+        // -- Total Subjects Tab --
         add_settings_section(
-            'boniedu_general_section',
-            'General Configuration',
-            null,
-            $this->plugin_name
+            'boniedu_total_subjects_section',
+            'Total Subjects',
+            array($this, 'section_total_subjects_cb'),
+            $this->plugin_name . '_total_subjects'
         );
 
         add_settings_field(
-            'enable_search',
-            'Enable Frontend Search',
-            array($this, 'render_checkbox_field'),
-            $this->plugin_name,
-            'boniedu_general_section',
-            array('key' => 'enable_search', 'desc' => 'Allow public result search.')
+            'total_subjects_count',
+            'Total Subjects',
+            array($this, 'render_total_subjects_field'),
+            $this->plugin_name . '_total_subjects',
+            'boniedu_total_subjects_section',
+            array('key' => 'total_subjects_count')
         );
 
-        // School Info Section
-        add_settings_section(
-            'boniedu_school_section',
-            'School Information',
-            null,
-            $this->plugin_name . '_school'
-        );
-
-        add_settings_field(
-            'school_name',
-            'School Name',
-            array($this, 'render_text_field'),
-            $this->plugin_name . '_school',
-            'boniedu_school_section',
-            array('key' => 'school_name')
-        );
-
-        add_settings_field(
-            'school_address',
-            'School Address',
-            array($this, 'render_textarea_field'),
-            $this->plugin_name . '_school',
-            'boniedu_school_section',
-            array('key' => 'school_address')
-        );
-
-        add_settings_field(
-            'school_eiin',
-            'School EIIN',
-            array($this, 'render_text_field'),
-            $this->plugin_name . '_school',
-            'boniedu_school_section',
-            array('key' => 'school_eiin')
-        );
+        // -- General Tab (Legacy support if needed, but we are moving to new structure) -- 
+        // We will keep previous Logic just in case, mapped to a 'General' tab if we decide to keep it?
+        // The screenshot doesn't show "General". It starts with "Total Subjects".
+        // I will preserve existing "active/school" settings in the sanitize function but maybe hide them from UI 
+        // unless we map them to one of these tabs? 
+        // "School Info" fits better in "Page Template" or "Search Form" potentially? 
+        // For now, I will strictly follow the screenshot for tabs.
     }
 
     public function sanitize_settings($input)
     {
-        $new_input = array();
-        if (isset($input['enable_search']))
-            $new_input['enable_search'] = '1';
-        if (isset($input['school_name']))
-            $new_input['school_name'] = sanitize_text_field($input['school_name']);
-        if (isset($input['school_address']))
-            $new_input['school_address'] = sanitize_textarea_field($input['school_address']);
-        if (isset($input['school_eiin']))
-            $new_input['school_eiin'] = sanitize_text_field($input['school_eiin']);
+        $new_input = get_option($this->option_name, array()); // Merge with existing
 
+        if (isset($input['total_subjects_count'])) {
+            $new_input['total_subjects_count'] = intval($input['total_subjects_count']);
+        }
+
+        // Preserve other keys if passed or keep old
         return $new_input;
     }
 
-    public function render_text_field($args)
+    public function section_total_subjects_cb()
     {
-        $options = get_option($this->option_name);
-        $key = $args['key'];
-        $val = isset($options[$key]) ? esc_attr($options[$key]) : '';
-        echo "<input type='text' name='{$this->option_name}[$key]' value='$val' class='regular-text' />";
+        echo '<p>Change the total number of subjects.</p>';
     }
 
-    public function render_textarea_field($args)
+    public function render_total_subjects_field($args)
     {
         $options = get_option($this->option_name);
-        $key = $args['key'];
-        $val = isset($options[$key]) ? esc_textarea($options[$key]) : '';
-        echo "<textarea name='{$this->option_name}[$key]' class='large-text' rows='3'>$val</textarea>";
-    }
-
-    public function render_checkbox_field($args)
-    {
-        $options = get_option($this->option_name);
-        $key = $args['key'];
-        $checked = isset($options[$key]) ? 'checked' : '';
-        echo "<input type='checkbox' name='{$this->option_name}[$key]' value='1' $checked />";
-        if (isset($args['desc']))
-            echo " <span class='description'>{$args['desc']}</span>";
+        $val = isset($options['total_subjects_count']) ? intval($options['total_subjects_count']) : 0;
+        echo "<input type='number' name='{$this->option_name}[total_subjects_count]' value='$val' class='regular-text' />";
+        echo " <span class='description'>Change total subjects.</span>";
     }
 
     public function display_plugin_setup_page()
     {
-        $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'general';
+        $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'total_subjects';
         ?>
         <div class="wrap">
-            <h1>BoniEdu Settings</h1>
+            <h1>Result Management Settings</h1>
+            <?php settings_errors(); ?>
 
             <h2 class="nav-tab-wrapper">
-                <a href="?page=boniedu-result-manager&tab=general"
-                    class="nav-tab <?php echo $active_tab == 'general' ? 'nav-tab-active' : ''; ?>">General</a>
-                <a href="?page=boniedu-result-manager&tab=school_info"
-                    class="nav-tab <?php echo $active_tab == 'school_info' ? 'nav-tab-active' : ''; ?>">School Info</a>
+                <?php foreach ($this->tabs as $key => $label): ?>
+                    <a href="?page=boniedu-result-manager&tab=<?php echo $key; ?>"
+                        class="nav-tab <?php echo $active_tab == $key ? 'nav-tab-active' : ''; ?>">
+                        <?php echo esc_html($label); ?>
+                    </a>
+                <?php endforeach; ?>
             </h2>
 
-            <form action="options.php" method="post">
-                <?php
-                settings_fields($this->option_group);
+            <div class="card" style="padding: 20px; margin-top: 20px;">
+                <form action="options.php" method="post">
+                    <?php
+                    settings_fields($this->option_group);
 
-                if ($active_tab == 'general') {
-                    do_settings_sections($this->plugin_name);
-                } else {
-                    do_settings_sections($this->plugin_name . '_school');
-                }
+                    // Router for Tabs
+                    switch ($active_tab) {
+                        case 'total_subjects':
+                            do_settings_sections($this->plugin_name . '_total_subjects');
+                            break;
 
-                submit_button();
-                ?>
-            </form>
+                        case 'fields':
+                        case 'subjects':
+                        case 'fields_validation':
+                        case 'subject_validation':
+                        case 'fields_hide_show':
+                        case 'subjects_hide_show':
+                        case 'edit_cysg':
+                        case 'page_template':
+                        case 'search_form':
+                            echo '<h3>' . esc_html($this->tabs[$active_tab]) . '</h3>';
+                            echo '<p>Settings for this section are coming soon.</p>';
+                            break;
+
+                        default:
+                            do_settings_sections($this->plugin_name . '_total_subjects');
+                            break;
+                    }
+
+                    submit_button('Save Settings');
+                    ?>
+                </form>
+            </div>
         </div>
         <?php
     }
