@@ -18,6 +18,9 @@ class Admin
         $this->version = $version;
         require_once BONIEDU_PLUGIN_DIR . 'includes/Admin/Settings.php';
         $this->settings_page = new Settings($this->plugin_name, $this->version);
+
+        require_once BONIEDU_PLUGIN_DIR . 'includes/Admin/AcademicYears.php';
+        $this->academic_years = new AcademicYears($this->plugin_name, $this->version);
     }
 
     /**
@@ -59,6 +62,8 @@ class Admin
             $this->plugin_name,
             array($this->settings_page, 'display_plugin_setup_page')
         );
+
+        $this->academic_years->add_submenu();
     }
 
     public function register_settings()
