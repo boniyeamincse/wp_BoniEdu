@@ -51,7 +51,10 @@ class BoniEdu
 
     private function define_public_hooks()
     {
-        // Public hooks will be added here
+        require_once BONIEDU_PLUGIN_DIR . 'includes/Public/Shortcode.php';
+        $plugin_public = new \BoniEdu\Publics\Shortcode($this->get_plugin_name(), $this->get_version());
+
+        $this->loader->add_action('init', $plugin_public, 'register');
     }
 
     public function run()
