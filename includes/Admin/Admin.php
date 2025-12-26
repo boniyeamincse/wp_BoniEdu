@@ -21,6 +21,9 @@ class Admin
 
         require_once BONIEDU_PLUGIN_DIR . 'includes/Admin/AcademicYears.php';
         $this->academic_years = new AcademicYears($this->plugin_name, $this->version);
+
+        require_once BONIEDU_PLUGIN_DIR . 'includes/Admin/ClassesSections.php';
+        $this->classes_sections = new ClassesSections($this->plugin_name, $this->version);
     }
 
     /**
