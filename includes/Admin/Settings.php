@@ -57,26 +57,147 @@ class Settings
             array('key' => 'total_subjects_count')
         );
 
-        // -- General Tab (Legacy support if needed, but we are moving to new structure) -- 
-        // We will keep previous Logic just in case, mapped to a 'General' tab if we decide to keep it?
-        // The screenshot doesn't show "General". It starts with "Total Subjects".
-        // I will preserve existing "active/school" settings in the sanitize function but maybe hide them from UI 
-        // unless we map them to one of these tabs? 
-        // "School Info" fits better in "Page Template" or "Search Form" potentially? 
-        // For now, I will strictly follow the screenshot for tabs.
+        // -- Fields Tab (Renaming) --
+        add_settings_section(
+            'boniedu_fields_section',
+            'Rename Fields',
+            function () {
+                echo '<p>Rename the labels for the student information fields.</p>'; },
+            $this->plugin_name . '_fields'
+        );
+
+        $default_fields = $this->get_default_fields();
+        foreach ($default_fields as $key => $label) {
+            add_settings_field(
+                'field_label_' . $key,
+                $label,
+                array($this, 'render_field_text_input'),
+                $this->plugin_name . '_fields',
+                'boniedu_fields_section',
+                array('key' => $key, 'type' => 'fields')
+            );
+        }
+
+        // -- Fields Hide/Show Tab --
+        add_settings_section(
+            'boniedu_fields_visibility_section',
+            'Fields Visibility',
+            function () {
+                echo '<p>Check the box to HIDE the field.</p>'; },
+            $this->plugin_name . '_fields_hide_show'
+        );
+
+        foreach ($default_fields as $key => $label) {
+            add_settings_field(
+                'field_vis_' . $key,
+                $label,
+                array($this, 'render_field_checkbox_input'),
+                $this->plugin_name . '_fields_hide_show',
+                'boniedu_fields_visibility_section',
+                array('key' => $key, 'type' => 'visibility')
+            );
+        }
+
+        // -- Subjects Tab (Dynamic Labels) --
+        add_settings_section(
+            'boniedu_subjects_section',
+            'Subject Configurations',
+            function () {
+                echo '<p>Configure labels for each subject column.</p>'; },
+            $this->plugin_name . '_subjects'
+        );
+
+        $options = get_option($this->option_name);
+        $total_subjects = isset($options['total_subjects_count']) ? intval($options['total_subjects_count']) : 0;
+
+        if ($total_subjects > 0) {
+            for ($i = 1; $i <= $total_subjects; $i++) {
+                add_settings_field(
+                    'subject_label_' . $i,
+                    'Subject ' . $i,
+                    array($this, 'render_subject_label_input'),
+                    $this->plugin_name . '_subjects',
+                    'boniedu_subjects_section',
+                    array('index' => $i)
+                );
+            }
+        } else {
+            add_settings_field(
+                'no_subjects_warning',
+                'No Subjects Configured',
+                function () {
+                    echo '<p style="color:red;">Please set "Total Subjects" in the Total Subjects tab first.</p>'; },
+                $this->plugin_name . '_subjects',
+                'boniedu_subjects_section'
+            );
+        }
+    }
+
+    private function get_default_fields()
+    {
+        return array(
+            'name' => 'Student Name',
+            'roll' => 'Roll No',
+            'reg_no' => 'Registration No',
+            'father_name' => 'Father Name',
+            'mother_name' => 'Mother Name',
+            'dob' => 'Date of Birth',
+            'gender' => 'Gender',
+            'religion' => 'Religion',
+            'session' => 'Session',
+            'class' => 'Class',
+            'section' => 'Section',
+            'group' => 'Group'
+        );
     }
 
     public function sanitize_settings($input)
     {
-        $new_input = get_option($this->option_name, array()); // Merge with existing
+        $current_options = get_option($this->option_name, array());
+        $new_input = $current_options; // Start with existing to preserve keys not submitted
 
+        // 1. Total Subjects
         if (isset($input['total_subjects_count'])) {
             $new_input['total_subjects_count'] = intval($input['total_subjects_count']);
         }
 
-        // Preserve other keys if passed or keep old
+        // 2. Fields (Renaming)
+        if (isset($input['fields']) && is_array($input['fields'])) {
+            if (!isset($new_input['fields']))
+                $new_input['fields'] = array();
+            foreach ($input['fields'] as $key => $val) {
+                $new_input['fields'][$key] = sanitize_text_field($val);
+            }
+        }
+
+        // 3. Visibility
+        // Checkboxes only send data if checked. We need to handle unchecked state.
+        // Logic: specific visibility input array.
+        if (isset($input['visibility']) && is_array($input['visibility'])) {
+            $new_input['visibility'] = $input['visibility']; // Assuming val=1 means Hidden
+        } else {
+            // If array exists in _POST but empty, it clears. 
+            // But Settings API passes full input array. 
+            // If tab is 'fields_hide_show', we should reset visibility if not present?
+            // To be safe, we merge.
+            if (isset($_POST['option_page']) && $_POST['option_page'] == $this->option_group && isset($_GET['tab']) && $_GET['tab'] == 'fields_hide_show') {
+                // If we are on this tab and no visibility array sent, it means all unchecked (Visible)
+                $new_input['visibility'] = array();
+            }
+        }
+
+        // 4. Subjects (Dynamic)
+        if (isset($input['subject_labels']) && is_array($input['subject_labels'])) {
+            $new_input['subject_labels'] = array();
+            foreach ($input['subject_labels'] as $idx => $label) {
+                $new_input['subject_labels'][$idx] = sanitize_text_field($label);
+            }
+        }
+
         return $new_input;
     }
+
+    // Callbacks
 
     public function section_total_subjects_cb()
     {
@@ -89,6 +210,39 @@ class Settings
         $val = isset($options['total_subjects_count']) ? intval($options['total_subjects_count']) : 0;
         echo "<input type='number' name='{$this->option_name}[total_subjects_count]' value='$val' class='regular-text' />";
         echo " <span class='description'>Change total subjects.</span>";
+    }
+
+    public function render_field_text_input($args)
+    {
+        $options = get_option($this->option_name);
+        $key = $args['key'];
+        // Default Value
+        $defaults = $this->get_default_fields();
+        $default_val = isset($defaults[$key]) ? $defaults[$key] : '';
+
+        $val = isset($options['fields'][$key]) ? esc_attr($options['fields'][$key]) : $default_val;
+
+        echo "<input type='text' name='{$this->option_name}[fields][$key]' value='$val' class='regular-text' placeholder='$default_val' />";
+    }
+
+    public function render_field_checkbox_input($args)
+    {
+        $options = get_option($this->option_name);
+        $key = $args['key'];
+        // stored as '1' if hidden
+        $is_hidden = isset($options['visibility'][$key]) && $options['visibility'][$key] === '1';
+        $checked = $is_hidden ? 'checked' : '';
+
+        echo "<input type='checkbox' name='{$this->option_name}[visibility][$key]' value='1' $checked />";
+        echo '<label> Hide</label>';
+    }
+
+    public function render_subject_label_input($args)
+    {
+        $options = get_option($this->option_name);
+        $idx = $args['index'];
+        $val = isset($options['subject_labels'][$idx]) ? esc_attr($options['subject_labels'][$idx]) : '';
+        echo "<input type='text' name='{$this->option_name}[subject_labels][$idx]' value='$val' class='regular-text' placeholder='Subject $idx' />";
     }
 
     public function display_plugin_setup_page()
@@ -120,10 +274,19 @@ class Settings
                             break;
 
                         case 'fields':
+                            do_settings_sections($this->plugin_name . '_fields');
+                            break;
+
+                        case 'fields_hide_show':
+                            do_settings_sections($this->plugin_name . '_fields_hide_show');
+                            break;
+
                         case 'subjects':
+                            do_settings_sections($this->plugin_name . '_subjects');
+                            break;
+
                         case 'fields_validation':
                         case 'subject_validation':
-                        case 'fields_hide_show':
                         case 'subjects_hide_show':
                         case 'edit_cysg':
                         case 'page_template':
