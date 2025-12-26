@@ -52,6 +52,10 @@ class Admin
         require_once BONIEDU_PLUGIN_DIR . 'includes/Admin/Certificates.php';
         $this->certificates = new Certificates($this->plugin_name, $this->version);
 
+        require_once BONIEDU_PLUGIN_DIR . 'includes/Admin/DashboardData.php';
+        $dashboard_data = new DashboardData($this->plugin_name, $this->version);
+        $dashboard_data->register_widgets();
+
         // Hooks for PDF generation
         add_action('admin_post_boniedu_download_certificate', array($this, 'handle_download_certificate'));
         add_action('admin_post_boniedu_download_marksheet', array($this, 'handle_download_marksheet'));
