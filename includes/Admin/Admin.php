@@ -126,6 +126,14 @@ class Admin
 
         // Results
         $this->results->add_submenu();
+        add_submenu_page(
+            $this->plugin_name,
+            'Add New Result',
+            'Add New Result',
+            'manage_boniedu_academic',
+            'boniedu-results', // The main Results page is the Add/Entry form currently
+            array($this->results, 'display_page')
+        );
 
         // Classes & Sections
         $this->classes_sections->add_submenu();
