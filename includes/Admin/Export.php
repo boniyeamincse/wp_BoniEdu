@@ -80,23 +80,24 @@ class Export
         settings_errors('boniedu_export');
         ?>
         <div class="wrap">
-            <h2>Export Data</h2>
-            <form method="post">
-                <?php wp_nonce_field('boniedu_export_action', 'boniedu_export_nonce'); ?>
-                <table class="form-table">
-                    <tr>
-                        <th scope="row"><label for="export_type">Export Type</label></th>
-                        <td>
-                            <select name="export_type" id="export_type">
-                                <option value="students">Students</option>
-                                <option value="results">Results</option>
-                            </select>
-                            <p class="description">Select the data to export.</p>
-                        </td>
-                    </tr>
-                </table>
-                <?php submit_button('Export CSV', 'primary', 'submit_export'); ?>
-            </form>
+            <h1>Export Data</h1>
+            <div class="boniedu-card">
+                <form method="post">
+                    <?php wp_nonce_field('boniedu_export_action', 'boniedu_export_nonce'); ?>
+                    <table class="form-table">
+                        <tr>
+                            <th scope="row"><label for="export_type">Export Type</label></th>
+                            <td>
+                                <select name="export_type" id="export_type" class="regular-text">
+                                    <option value="students">Students</option>
+                                    <option value="results">Results</option>
+                                </select>
+                            </td>
+                        </tr>
+                    </table>
+                    <?php submit_button('Export Data', 'primary', 'submit_export'); ?>
+                </form>
+            </div>
         </div>
         <?php
     }

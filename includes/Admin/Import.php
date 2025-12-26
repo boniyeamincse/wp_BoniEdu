@@ -94,6 +94,20 @@ class Import
         $updated_count = 0;
         $error_count = 0;
 
+        // Get Configured Subjects to map Headers -> IDs
+        $settings = get_option('boniedu_result_settings', array());
+        $subject_labels = isset($settings['subject_labels']) ? $settings['subject_labels'] : array();
+        // Create map: Label => ID (Index)
+        // e.g., 'Bangla' => 1
+        $subject_map = array();
+        if (!empty($subject_labels)) {
+            foreach ($subject_labels as $id => $label) {
+                if (!empty($label)) {
+                    $subject_map[trim(strtolower($label))] = $id;
+                }
+            }
+        }
+
         foreach ($rows as $row) {
             $student_id = 0;
 
@@ -101,52 +115,93 @@ class Import
             if (!empty($row['student_id'])) {
                 $student_id = intval($row['student_id']);
             } elseif (!empty($row['roll_number'])) {
-                // Lookup by roll number
                 $student = $wpdb->get_row($wpdb->prepare("SELECT id FROM {$wpdb->prefix}boniedu_students WHERE roll_number = %s", $row['roll_number']));
-                if ($student) {
-                    $student_id = $student->id;
-                }
+                $student_id = $student ? $student->id : 0;
+            } elseif (!empty($row['roll_no'])) { // Support roll_no alias
+                $student = $wpdb->get_row($wpdb->prepare("SELECT id FROM {$wpdb->prefix}boniedu_students WHERE roll_number = %s", $row['roll_no']));
+                $student_id = $student ? $student->id : 0;
             }
 
-            if (empty($student_id) || empty($row['exam_id']) || empty($row['subject_id'])) {
+            if (empty($student_id) || empty($row['exam_id'])) {
                 $error_count++;
                 continue;
             }
 
-            $data = [
-                'student_id' => $student_id,
-                'exam_id' => intval($row['exam_id']),
-                'subject_id' => intval($row['subject_id']),
-                'marks_obtained' => floatval($row['marks_obtained']),
-                'total_marks' => isset($row['total_marks']) ? floatval($row['total_marks']) : 100,
-                'grade' => isset($row['grade']) ? sanitize_text_field($row['grade']) : '',
-            ];
+            $exam_id = intval($row['exam_id']);
 
-            // Check if exists
-            $existing = $wpdb->get_row($wpdb->prepare(
-                "SELECT id FROM $table_name WHERE student_id = %d AND exam_id = %d AND subject_id = %d",
-                $data['student_id'],
-                $data['exam_id'],
-                $data['subject_id']
-            ));
+            // Detect if this is a Bulk Row (Subject Columns) or Single Row
+            // Bulk strategy: Check if any CSV keys match our Subject Labels
+            $csv_keys = array_change_key_case($row, CASE_LOWER); // normalized keys
 
-            if ($existing) {
-                $entry_id = $existing->id;
-                $data['updated_at'] = current_time('mysql');
-                $updated = $wpdb->update($table_name, $data, ['id' => $entry_id]);
-                if ($updated !== false)
-                    $updated_count++;
-            } else {
-                $data['created_at'] = current_time('mysql');
-                $inserted = $wpdb->insert($table_name, $data);
-                if ($inserted)
-                    $success_count++;
-                else
-                    $error_count++;
+            $found_subject_column = false;
+
+            if (!empty($subject_map)) {
+                foreach ($subject_map as $label_lower => $subj_id) {
+                    if (isset($csv_keys[$label_lower])) {
+                        // Found a mark for this subject!
+                        $found_subject_column = true;
+                        $mark_val = $csv_keys[$label_lower];
+
+                        // Skip empty marks? Or treat as 0? Let's skip if empty string to allow partial updates
+                        if ($mark_val === '')
+                            continue;
+
+                        $this->insert_or_update_result($table_name, $student_id, $exam_id, $subj_id, $mark_val, $success_count, $updated_count, $error_count);
+                    }
+                }
+            }
+
+            // Fallback: If no subject columns found, try standard single-row format
+            if (!$found_subject_column && !empty($row['subject_id'])) {
+                $this->insert_or_update_result($table_name, $student_id, $exam_id, intval($row['subject_id']), $row['marks_obtained'], $success_count, $updated_count, $error_count);
+            } elseif (!$found_subject_column) {
+                // No valid subject data found in this row
+                $error_count++;
             }
         }
 
-        add_settings_error('boniedu_import', 'import_success', "Imported $success_count new results. Updated: $updated_count. Failed: $error_count.", 'success');
+        add_settings_error('boniedu_import', 'import_success', "Processed Results. New: $success_count. Updated: $updated_count. Failed/Skipped: $error_count.", 'success');
+    }
+
+    private function insert_or_update_result($table_name, $student_id, $exam_id, $subject_id, $mark, &$success, &$updated, &$error)
+    {
+        global $wpdb;
+
+        // Retrieve defaults for grade/fullMark if not provided in row (Bulk mode usually doesn't have grade per subject in same row easily unless complex pattern)
+        // We will calculate simple Pass/Fail or Grade later? For now, we just save marks.
+        // TODO: Auto-calculate Grade based on mark.
+
+        $data = [
+            'student_id' => $student_id,
+            'exam_id' => $exam_id,
+            'subject_id' => $subject_id,
+            'marks_obtained' => floatval($mark),
+            'total_marks' => 100, // Default, maybe fetch from settings
+            'updated_at' => current_time('mysql')
+        ];
+
+        // Check exists
+        $existing = $wpdb->get_row($wpdb->prepare(
+            "SELECT id FROM $table_name WHERE student_id = %d AND exam_id = %d AND subject_id = %d",
+            $student_id,
+            $exam_id,
+            $subject_id
+        ));
+
+        if ($existing) {
+            if ($wpdb->update($table_name, $data, ['id' => $existing->id]) !== false) {
+                $updated++;
+            } else {
+                $error++;
+            }
+        } else {
+            $data['created_at'] = current_time('mysql');
+            if ($wpdb->insert($table_name, $data)) {
+                $success++;
+            } else {
+                $error++;
+            }
+        }
     }
 
     public function render_page()
@@ -159,36 +214,48 @@ class Import
         settings_errors('boniedu_import');
         ?>
         <div class="wrap">
-            <h2>Import Data</h2>
-            <form method="post" enctype="multipart/form-data">
-                <?php wp_nonce_field('boniedu_import_action', 'boniedu_import_nonce'); ?>
-                <table class="form-table">
-                    <tr>
-                        <th scope="row"><label for="import_type">Import Type</label></th>
-                        <td>
-                            <select name="import_type" id="import_type">
-                                <option value="students">Students</option>
-                                <option value="results">Results</option>
-                            </select>
-                            <p class="description">Select the type of data you are importing.</p>
-                        </td>
-                    </tr>
-                    <tr>
-                        <th scope="row"><label for="import_file">CSV File</label></th>
-                        <td>
-                            <input type="file" name="import_file" id="import_file" accept=".csv" required>
-                            <p class="description">Upload a CSV file.</p>
-                        </td>
-                    </tr>
-                </table>
-                <?php submit_button('Import CSV', 'primary', 'submit_import'); ?>
-            </form>
+            <h1>Import Data</h1>
 
-            <hr>
-            <h3>CSV Guidelines</h3>
-            <p><strong>Students CSV Headers:</strong> first_name, last_name, email, roll_number, class_id, section_id</p>
-            <p><strong>Results CSV Headers:</strong> student_id (or roll_number), exam_id, subject_id, marks_obtained,
-                total_marks, grade</p>
+            <div class="boniedu-card">
+                <form method="post" enctype="multipart/form-data">
+                    <?php wp_nonce_field('boniedu_import_action', 'boniedu_import_nonce'); ?>
+                    <table class="form-table">
+                        <tr>
+                            <th scope="row"><label for="import_type">Import Type</label></th>
+                            <td>
+                                <select name="import_type" id="import_type" class="regular-text">
+                                    <option value="students">Students</option>
+                                    <option value="results">Results (Bulk / Single)</option>
+                                </select>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row"><label for="import_file">CSV File</label></th>
+                            <td>
+                                <input type="file" name="import_file" id="import_file" accept=".csv" required>
+                                <p class="description">Upload a standard .csv file.</p>
+                            </td>
+                        </tr>
+                    </table>
+                    <?php submit_button('Import Data', 'primary', 'submit_import'); ?>
+                </form>
+
+                <hr>
+
+                <h3>CSV Format Guidelines</h3>
+                <div
+                    style="background: var(--boni-bg); padding: 15px; border-radius: var(--boni-radius); border: 1px solid var(--boni-border);">
+                    <h4 style="margin-top:0;">Students Import</h4>
+                    <code>first_name, last_name, email, roll_number, class_id, section_id</code>
+
+                    <h4 style="margin-top:15px;">Results Import (Bulk Subject-wise) - Recommended</h4>
+                    <p>Use the <strong>exact Subject Label</strong> (from Settings) as the column header.</p>
+                    <code>roll_number, exam_id, Bengali, English, Math, Science</code>
+
+                    <h4 style="margin-top:15px;">Results Import (Single Row)</h4>
+                    <code>roll_number, exam_id, subject_id, marks_obtained</code>
+                </div>
+            </div>
         </div>
         <?php
     }

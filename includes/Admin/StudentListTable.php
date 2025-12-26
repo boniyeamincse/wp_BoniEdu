@@ -121,6 +121,7 @@ class StudentListTable extends \WP_List_Table
         $delete_nonce = wp_create_nonce('boniedu_delete_student');
         $title = '<strong>' . $item['name'] . '</strong>';
 
+        $actions = array(
             'edit' => sprintf('<a href="?page=%s&action=%s&id=%s">Edit</a>', $_REQUEST['page'], 'edit', $item['id']),
             'certificate' => sprintf('<a href="%s" target="_blank">Certificate</a>', admin_url('admin-post.php?action=boniedu_download_certificate&student_id=' . $item['id'])),
             'admit_card' => sprintf('<a href="%s" target="_blank">Admit Card</a>', admin_url('admin-post.php?action=boniedu_download_admit_card&student_id=' . $item['id'])),
