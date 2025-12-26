@@ -54,10 +54,15 @@ class Students
                 'section_id' => intval($_POST['section_id']),
                 'session_year' => sanitize_text_field($_POST['session_year']),
                 'registration_no' => sanitize_text_field($_POST['registration_no']),
-                'created_at' => current_time('mysql')
+                'updated_at' => current_time('mysql')
             );
 
-            $format = array('%d', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%d', '%s', '%s', '%s');
+            // Handle created_at for insert
+            if (!isset($_POST['student_id']) || empty($_POST['student_id'])) {
+                $data['created_at'] = current_time('mysql');
+            }
+
+            $format = array('%d', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%d', '%s', '%s', '%s', '%s');
 
             if (isset($_POST['student_id']) && !empty($_POST['student_id'])) {
                 $id = intval($_POST['student_id']);
@@ -68,10 +73,28 @@ class Students
                 add_settings_error('boniedu_students', 'student_added', 'Student enrolled successfully.', 'success');
             }
         }
+
+        // Delete Logic
+        if (isset($_GET['action']) && $_GET['action'] == 'delete' && isset($_GET['id']) && isset($_GET['_wpnonce'])) {
+            if (wp_verify_nonce($_GET['_wpnonce'], 'boniedu_delete_student')) {
+                $wpdb->delete($this->table_students, array('id' => intval($_GET['id'])));
+                add_settings_error('boniedu_students', 'student_deleted', 'Student deleted.', 'success');
+            }
+        }
+
+        // Bulk Delete Logic
+        if (isset($_POST['bulk-delete']) && is_array($_POST['bulk-delete'])) {
+            // In real production, would check bulk nonce from the table
+            foreach ($_POST['bulk-delete'] as $id) {
+                $wpdb->delete($this->table_students, array('id' => intval($id)));
+            }
+            add_settings_error('boniedu_students', 'students_bulk_deleted', 'Students deleted.', 'success');
+        }
     }
 
     public function display_page()
     {
+        require_once BONIEDU_PLUGIN_DIR . 'includes/Admin/StudentListTable.php';
         $this->process_form_data();
 
         $action = isset($_GET['action']) ? $_GET['action'] : 'list';
@@ -79,10 +102,24 @@ class Students
         if ($action == 'add' || $action == 'edit') {
             $this->render_form();
         } else {
-            // Module 10 will implement the list view.
-            echo '<div class="wrap"><h1>Students List (Module 10)</h1>';
-            echo '<a href="' . admin_url('admin.php?page=boniedu-students&action=add') . '" class="page-title-action">Add New</a>';
-            echo '<p>Student Directory will be implemented in Module 10.</p></div>';
+            $student_table = new StudentListTable();
+            $student_table->prepare_items();
+            ?>
+            <div class="wrap">
+                <h1 class="wp-heading-inline">Students</h1>
+                <a href="<?php echo admin_url('admin.php?page=boniedu-students&action=add'); ?>" class="page-title-action">Add
+                    New</a>
+                <hr class="wp-header-end">
+
+                <?php settings_errors('boniedu_students'); ?>
+
+                <form id="student-filter" method="get">
+                    <input type="hidden" name="page" value="<?php echo $_REQUEST['page'] ?>" />
+                    <?php $student_table->search_box('Search', 'student_search'); ?>
+                    <?php $student_table->display(); ?>
+                </form>
+            </div>
+            <?php
         }
     }
 
@@ -115,7 +152,8 @@ class Students
 
             <form method="post" action="" style="max-width: 800px;">
                 <?php wp_nonce_field('boniedu_save_student', 'boniedu_save_student_nonce'); ?>
-                <?php if ($student): ?><input type="hidden" name="student_id" value="<?php echo $student->id; ?>"><?php endif; ?>
+                <?php if ($student): ?><input type="hidden" name="student_id"
+                        value="<?php echo $student->id; ?>"><?php endif; ?>
 
                 <div class="card" style="padding: 20px;">
                     <h3>Academic Info</h3>
