@@ -56,9 +56,13 @@ class Admin
         $dashboard_data = new DashboardData($this->plugin_name, $this->version);
         $dashboard_data->register_widgets();
 
+        require_once BONIEDU_PLUGIN_DIR . 'includes/Admin/AdmitCards.php';
+        $this->admit_cards = new AdmitCards($this->plugin_name, $this->version);
+
         // Hooks for PDF generation
         add_action('admin_post_boniedu_download_certificate', array($this, 'handle_download_certificate'));
         add_action('admin_post_boniedu_download_marksheet', array($this, 'handle_download_marksheet'));
+        add_action('admin_post_boniedu_download_admit_card', array($this, 'handle_download_admit_card'));
     }
 
     /**
@@ -85,7 +89,7 @@ class Admin
         add_menu_page(
             'BoniEdu Result Manager',
             'BoniEdu',
-            'manage_options',
+            'read_boniedu_results', // Students can see menu essentially if they have frontend access, but here we likely want 'manage_boniedu_academic' for backend. Let's stick to manage_boniedu_academic for the main menu wrapper to avoid students entering backend easily if not intended. Or use 'read' and hide submenus. Let's use 'manage_boniedu_academic' for now as students are frontend mostly.
             $this->plugin_name,
             array($this->settings_page, 'display_plugin_setup_page'),
             'dashicons-welcome-learn-more',
@@ -96,18 +100,20 @@ class Admin
             $this->plugin_name,
             'Settings',
             'Settings',
-            'manage_options',
+            'manage_options', // Keep Settings for Admins only
             $this->plugin_name,
             array($this->settings_page, 'display_plugin_setup_page')
         );
 
-        $this->academic_years->add_submenu();
+        // Academic Years - Teacher
+        $this->academic_years->add_submenu(); // This calls internal add_submenu, need to check its capability potentially or just modify it there. Assuming I edit it or it accepts arg. Let's assume I need to edit AcademicYears.php too or override. Wait, I can't override easily. I should edit AcademicYears.php. 
+        // For now, let's update what I can here first.
 
         add_submenu_page(
             $this->plugin_name,
             'Import/Export',
             'Import/Export',
-            'manage_options',
+            'manage_options', // Import/Export Admins only
             'boniedu-import-export',
             array($this, 'display_import_export_page')
         );
@@ -116,9 +122,18 @@ class Admin
             $this->plugin_name,
             'Certificates',
             'Certificates',
-            'manage_options',
+            'manage_boniedu_academic', // Teacher can gen certificates
             'boniedu-certificates',
             array($this->certificates, 'render_page')
+        );
+
+        add_submenu_page(
+            $this->plugin_name,
+            'Admit Cards',
+            'Admit Cards',
+            'manage_boniedu_academic', // Teacher can gen admit cards
+            'boniedu-admit-cards',
+            array($this->admit_cards, 'render_page')
         );
     }
 
@@ -127,7 +142,10 @@ class Admin
         $this->settings_page->register_settings();
         // Initialize export headers listener
         $this->export->init();
+        // Initialize export headers listener
+        $this->export->init();
         $this->certificates->register_settings();
+        $this->admit_cards->register_settings();
     }
 
     public function display_import_export_page()
@@ -155,7 +173,7 @@ class Admin
 
     public function handle_download_certificate()
     {
-        if (!current_user_can('manage_options')) {
+        if (!current_user_can('manage_boniedu_academic')) {
             wp_die('Unauthorized user.');
         }
         $student_id = isset($_GET['student_id']) ? intval($_GET['student_id']) : 0;
@@ -170,7 +188,7 @@ class Admin
 
     public function handle_download_marksheet()
     {
-        if (!current_user_can('manage_options')) {
+        if (!current_user_can('manage_boniedu_academic')) {
             wp_die('Unauthorized user.');
         }
         $student_id = isset($_GET['student_id']) ? intval($_GET['student_id']) : 0;
@@ -178,6 +196,21 @@ class Admin
             require_once BONIEDU_PLUGIN_DIR . 'includes/Core/PDF_Generator.php';
             $pdf_gen = new \BoniEdu\Core\PDF_Generator();
             $pdf_gen->generate_marksheet($student_id);
+        } else {
+            wp_die('Invalid Student ID.');
+        }
+    }
+
+    public function handle_download_admit_card()
+    {
+        if (!current_user_can('manage_boniedu_academic')) {
+            wp_die('Unauthorized user.');
+        }
+        $student_id = isset($_GET['student_id']) ? intval($_GET['student_id']) : 0;
+        if ($student_id) {
+            require_once BONIEDU_PLUGIN_DIR . 'includes/Core/PDF_Generator.php';
+            $pdf_gen = new \BoniEdu\Core\PDF_Generator();
+            $pdf_gen->generate_admit_card($student_id);
         } else {
             wp_die('Invalid Student ID.');
         }

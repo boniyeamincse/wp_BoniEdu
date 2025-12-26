@@ -20,7 +20,8 @@ class Activator
         Migrator::migrate();
 
         // Add Custom Roles
-        RoleManager::add_roles();
+        require_once BONIEDU_PLUGIN_DIR . 'includes/Core/Roles.php';
+        Roles::add_roles();
     }
 
 }

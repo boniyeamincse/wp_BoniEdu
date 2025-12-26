@@ -23,7 +23,7 @@ class AcademicYears
             $this->plugin_name,
             'Academic Years',
             'Academic Years',
-            'manage_options',
+            'manage_boniedu_academic',
             'boniedu-academic-years',
             array($this, 'display_page')
         );

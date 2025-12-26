@@ -9,26 +9,26 @@ namespace BoniEdu\Core;
 class Migrator
 {
 
-    /**
-     * Run the migrations.
-     */
-    public static function migrate()
-    {
-        global $wpdb;
+	/**
+	 * Run the migrations.
+	 */
+	public static function migrate()
+	{
+		global $wpdb;
 
-        $charset_collate = $wpdb->get_charset_collate();
+		$charset_collate = $wpdb->get_charset_collate();
 
-        // Table names
-        $table_classes = $wpdb->prefix . 'boniedu_classes';
-        $table_sections = $wpdb->prefix . 'boniedu_sections';
-        $table_subjects = $wpdb->prefix . 'boniedu_subjects';
-        $table_students = $wpdb->prefix . 'boniedu_students';
-        $table_results = $wpdb->prefix . 'boniedu_results';
+		// Table names
+		$table_classes = $wpdb->prefix . 'boniedu_classes';
+		$table_sections = $wpdb->prefix . 'boniedu_sections';
+		$table_subjects = $wpdb->prefix . 'boniedu_subjects';
+		$table_students = $wpdb->prefix . 'boniedu_students';
+		$table_results = $wpdb->prefix . 'boniedu_results';
 
-        require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
+		require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
 
-        // 1. Classes Table
-        $sql_classes = "CREATE TABLE $table_classes (
+		// 1. Classes Table
+		$sql_classes = "CREATE TABLE $table_classes (
 			id mediumint(9) NOT NULL AUTO_INCREMENT,
 			name varchar(100) NOT NULL,
 			numeric_value tinyint(3) NOT NULL,
@@ -36,8 +36,8 @@ class Migrator
 			PRIMARY KEY  (id)
 		) $charset_collate;";
 
-        // 2. Sections Table
-        $sql_sections = "CREATE TABLE $table_sections (
+		// 2. Sections Table
+		$sql_sections = "CREATE TABLE $table_sections (
 			id mediumint(9) NOT NULL AUTO_INCREMENT,
 			class_id mediumint(9) NOT NULL,
 			name varchar(100) NOT NULL,
@@ -47,8 +47,8 @@ class Migrator
 			KEY class_id (class_id)
 		) $charset_collate;";
 
-        // 3. Subjects Table
-        $sql_subjects = "CREATE TABLE $table_subjects (
+		// 3. Subjects Table
+		$sql_subjects = "CREATE TABLE $table_subjects (
 			id mediumint(9) NOT NULL AUTO_INCREMENT,
 			class_id mediumint(9) NOT NULL,
 			name varchar(100) NOT NULL,
@@ -60,8 +60,8 @@ class Migrator
 			KEY class_id (class_id)
 		) $charset_collate;";
 
-        // 4. Students Table
-        $sql_students = "CREATE TABLE $table_students (
+		// 4. Students Table
+		$sql_students = "CREATE TABLE $table_students (
 			id mediumint(9) NOT NULL AUTO_INCREMENT,
 			registration_no varchar(50) DEFAULT '',
 			roll_no int(5) NOT NULL,
@@ -70,6 +70,7 @@ class Migrator
 			mother_name varchar(255) DEFAULT '',
 			dob date DEFAULT '0000-00-00',
 			gender varchar(20) DEFAULT '',
+			religion varchar(50) DEFAULT '',
 			address text DEFAULT '',
 			photo_id bigint(20) DEFAULT 0,
 			class_id mediumint(9) NOT NULL,
@@ -82,8 +83,8 @@ class Migrator
 			KEY roll_no (roll_no)
 		) $charset_collate;";
 
-        // 5. Results Table (Marks)
-        $sql_results = "CREATE TABLE $table_results (
+		// 5. Results Table (Marks)
+		$sql_results = "CREATE TABLE $table_results (
 			id bigint(20) NOT NULL AUTO_INCREMENT,
 			student_id mediumint(9) NOT NULL,
 			subject_id mediumint(9) NOT NULL,
@@ -99,10 +100,10 @@ class Migrator
 			KEY subject_id (subject_id)
 		) $charset_collate;";
 
-        dbDelta($sql_classes);
-        dbDelta($sql_sections);
-        dbDelta($sql_subjects);
-        dbDelta($sql_students);
-        dbDelta($sql_results);
-    }
+		dbDelta($sql_classes);
+		dbDelta($sql_sections);
+		dbDelta($sql_subjects);
+		dbDelta($sql_students);
+		dbDelta($sql_results);
+	}
 }

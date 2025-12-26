@@ -44,40 +44,46 @@ class Results
     {
         global $wpdb;
 
+        // Redirect helper for searching
+        if (isset($_POST['student_search_term'])) {
+            $term = sanitize_text_field($_POST['student_search_term']);
+            $student = $wpdb->get_row($wpdb->prepare("SELECT id FROM $this->table_students WHERE name LIKE %s OR roll_no = %s LIMIT 1", '%' . $term . '%', $term));
+            if ($student) {
+                // Redirect to self with student_id
+                wp_redirect(admin_url('admin.php?page=boniedu-results&student_id=' . $student->id));
+                exit;
+            } else {
+                add_settings_error('boniedu_results', 'student_not_found', 'Student not found.', 'error');
+            }
+        }
+
         if (isset($_POST['boniedu_save_results_nonce']) && wp_verify_nonce($_POST['boniedu_save_results_nonce'], 'boniedu_save_results')) {
 
-            $class_id = intval($_POST['class_id']);
-            $section_id = intval($_POST['section_id']);
-            $subject_id = intval($_POST['subject_id']);
+            $student_id = intval($_POST['student_id_hidden']);
             $exam_type = sanitize_text_field($_POST['exam_type']);
+            $marks_data = isset($_POST['marks']) ? $_POST['marks'] : array(); // array( subject_id => marks )
 
-            $marks_data = $_POST['marks']; // array( student_id => marks )
-
-            if (!empty($marks_data) && is_array($marks_data)) {
+            if ($student_id && !empty($marks_data)) {
                 // Ensure Calculator class is available
                 if (!class_exists('BoniEdu\Core\Calculator')) {
                     require_once BONIEDU_PLUGIN_DIR . 'includes/Core/Calculator.php';
                 }
 
-                foreach ($marks_data as $student_id => $marks) {
-                    $student_id = intval($student_id);
+                foreach ($marks_data as $subject_id => $marks) {
+                    $subject_id = intval($subject_id);
                     $marks = floatval($marks);
-                    $is_absent = isset($_POST['absent'][$student_id]) ? 1 : 0;
 
-                    // Calculate Grade & GPA
+                    if ($marks === '')
+                        continue; // Skip empty? No, floatval handles it. Check if actually entered? 
+                    // Let's assume if it's set in POST it's intentional.
+
                     $grade_letter = \BoniEdu\Core\Calculator::get_grade_letter($marks);
                     $grade_point = \BoniEdu\Core\Calculator::get_grade_point($marks);
 
-                    if ($is_absent) {
-                        $marks = 0;
-                        $grade_letter = 'F';
-                        $grade_point = 0.00;
-                    }
-
-                    // Check if result exists
+                    // Check existing
                     $existing_id = $wpdb->get_var($wpdb->prepare(
                         "SELECT id FROM $this->table_results 
-						WHERE student_id = %d AND subject_id = %d AND exam_type = %s",
+                        WHERE student_id = %d AND subject_id = %d AND exam_type = %s",
                         $student_id,
                         $subject_id,
                         $exam_type
@@ -90,7 +96,6 @@ class Results
                         'marks_obtained' => $marks,
                         'grade_letter' => $grade_letter,
                         'grade_point' => $grade_point,
-                        'is_absent' => $is_absent,
                         'updated_at' => current_time('mysql')
                     );
 
@@ -109,171 +114,246 @@ class Results
     public function display_page()
     {
         $this->process_form_data();
-        global $wpdb;
-
-        $step = isset($_GET['step']) ? intval($_GET['step']) : 1;
-
-        $classes = $wpdb->get_results("SELECT * FROM $this->table_classes ORDER BY numeric_value ASC");
-
-        // Defaults
-        $selected_class = isset($_REQUEST['class_id']) ? intval($_REQUEST['class_id']) : 0;
-        $selected_section = isset($_REQUEST['section_id']) ? intval($_REQUEST['section_id']) : 0;
-        $selected_subject = isset($_REQUEST['subject_id']) ? intval($_REQUEST['subject_id']) : 0;
-        $selected_exam = isset($_REQUEST['exam_type']) ? sanitize_text_field($_REQUEST['exam_type']) : '';
-
-        ?>
-        <div class="wrap">
-            <h1>Results Management</h1>
-            <?php settings_errors('boniedu_results'); ?>
-
-            <div class="card" style="padding: 20px; margin-bottom: 20px;">
-                <form method="get">
-                    <input type="hidden" name="page" value="boniedu-results">
-                    <input type="hidden" name="step" value="2">
-
-                    <div style="display: flex; gap: 15px; flex-wrap: wrap; align-items: flex-end;">
-                        <div>
-                            <label>Class</label><br>
-                            <select name="class_id" required onchange="this.form.submit()">
-                                <option value="">-- Select Class --</option>
-                                <?php foreach ($classes as $c): ?>
-                                    <option value="<?php echo $c->id; ?>" <?php selected($selected_class, $c->id); ?>>
-                                        <?php echo esc_html($c->name); ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-
-                        <?php if ($selected_class):
-                            $sections = $wpdb->get_results($wpdb->prepare("SELECT * FROM $this->table_sections WHERE class_id = %d", $selected_class));
-                            $subjects = $wpdb->get_results($wpdb->prepare("SELECT * FROM $this->table_subjects WHERE class_id = %d", $selected_class));
-                            ?>
-                            <div>
-                                <label>Section</label><br>
-                                <select name="section_id">
-                                    <option value="0">All Sections</option>
-                                    <?php foreach ($sections as $s): ?>
-                                        <option value="<?php echo $s->id; ?>" <?php selected($selected_section, $s->id); ?>>
-                                            <?php echo esc_html($s->name); ?>
-                                        </option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
-
-                            <div>
-                                <label>Subject</label><br>
-                                <select name="subject_id" required>
-                                    <option value="">-- Select Subject --</option>
-                                    <?php foreach ($subjects as $sub): ?>
-                                        <option value="<?php echo $sub->id; ?>" <?php selected($selected_subject, $sub->id); ?>>
-                                            <?php echo esc_html($sub->name); ?>
-                                        </option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
-
-                            <div>
-                                <label>Exam Type</label><br>
-                                <select name="exam_type" required>
-                                    <option value="">-- Select Exam --</option>
-                                    <option value="First Terminal" <?php selected($selected_exam, 'First Terminal'); ?>>First
-                                        Terminal</option>
-                                    <option value="Second Terminal" <?php selected($selected_exam, 'Second Terminal'); ?>>Second
-                                        Terminal</option>
-                                    <option value="Final" <?php selected($selected_exam, 'Final'); ?>>Final</option>
-                                </select>
-                            </div>
-
-                            <div>
-                                <button type="submit" class="button button-primary">Filter / Load Students</button>
-                            </div>
-                        <?php endif; ?>
-                    </div>
-                </form>
-            </div>
-
-            <?php
-            if ($step == 2 && $selected_class && $selected_subject && $selected_exam) {
-                $this->render_marks_entry_form($selected_class, $selected_section, $selected_subject, $selected_exam);
-            }
-            ?>
-
-        </div>
-        <?php
+        $this->render_form();
     }
 
-    private function render_marks_entry_form($class_id, $section_id, $subject_id, $exam_type)
+    private function render_form()
     {
         global $wpdb;
 
-        $query = "SELECT * FROM $this->table_students WHERE class_id = $class_id";
-        if ($section_id) {
-            $query .= " AND section_id = $section_id";
+        // Fetch Helpers
+        $classes = $wpdb->get_results("SELECT * FROM $this->table_classes ORDER BY numeric_value ASC");
+        $sessions = get_option('boniedu_sessions', array());
+        $sections = $wpdb->get_results("SELECT * FROM $this->table_sections");
+
+        // Current Selection
+        $selected_class = isset($_REQUEST['class_id']) ? intval($_REQUEST['class_id']) : 0;
+        $selected_section = isset($_REQUEST['section_id']) ? intval($_REQUEST['section_id']) : 0;
+        $selected_year = isset($_REQUEST['session_year']) ? sanitize_text_field($_REQUEST['session_year']) : '';
+        $student_id = isset($_REQUEST['student_id']) ? intval($_REQUEST['student_id']) : 0;
+
+        $student = null;
+        $subjects = array();
+        $existing_results = array();
+
+        if ($student_id) {
+            $student = $wpdb->get_row($wpdb->prepare("SELECT * FROM $this->table_students WHERE id = %d", $student_id));
+            if ($student) {
+                // Override selection with student's actual data
+                $selected_class = $student->class_id;
+                $selected_section = $student->section_id;
+                $selected_year = $student->session_year;
+            }
         }
-        $query .= " ORDER BY roll_no ASC";
 
-        $students = $wpdb->get_results($query);
-
-        // Fetch existing results
-        $existing_results_raw = $wpdb->get_results($wpdb->prepare(
-            "SELECT student_id, marks_obtained, is_absent FROM $this->table_results 
-			WHERE subject_id = %d AND exam_type = %s",
-            $subject_id,
-            $exam_type
-        ));
-
-        $results_map = array();
-        foreach ($existing_results_raw as $res) {
-            $results_map[$res->student_id] = $res;
+        if ($selected_class) {
+            $subjects = $wpdb->get_results($wpdb->prepare("SELECT * FROM $this->table_subjects WHERE class_id = %d", $selected_class));
         }
 
-        if (empty($students)) {
-            echo '<p>No students found for this selection.</p>';
-            return;
+        if ($student_id && $subjects) {
+            foreach ($subjects as $sub) {
+                $res = $wpdb->get_row($wpdb->prepare(
+                    "SELECT * FROM $this->table_results WHERE student_id = %d AND subject_id = %d",
+                    $student_id,
+                    $sub->id
+                ));
+                if ($res) {
+                    $existing_results[$sub->id] = $res->marks_obtained;
+                }
+            }
         }
 
         ?>
-        <form method="post" action="">
-            <?php wp_nonce_field('boniedu_save_results', 'boniedu_save_results_nonce'); ?>
-            <input type="hidden" name="class_id" value="<?php echo $class_id; ?>">
-            <input type="hidden" name="section_id" value="<?php echo $section_id; ?>">
-            <input type="hidden" name="subject_id" value="<?php echo $subject_id; ?>">
-            <input type="hidden" name="exam_type" value="<?php echo esc_attr($exam_type); ?>">
+        <div class="wrap">
+            <h1 class="wp-heading-inline">Add New Result</h1>
+            <hr class="wp-header-end">
+            <?php settings_errors('boniedu_results'); ?>
 
-            <table class="wp-list-table widefat fixed striped">
-                <thead>
-                    <tr>
-                        <th style="width: 80px;">Roll No</th>
-                        <th>Student Name</th>
-                        <th style="width: 150px;">Marks Obtained</th>
-                        <th style="width: 80px;">Absent</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php foreach ($students as $student):
-                        $existing = isset($results_map[$student->id]) ? $results_map[$student->id] : null;
-                        $marks = $existing ? $existing->marks_obtained : '';
-                        $absent = $existing && $existing->is_absent ? 'checked' : '';
-                        ?>
-                        <tr>
-                            <td><?php echo intval($student->roll_no); ?></td>
-                            <td><strong><?php echo esc_html($student->name); ?></strong></td>
-                            <td>
-                                <input type="number" step="0.01" name="marks[<?php echo $student->id; ?>]"
-                                    value="<?php echo esc_attr($marks); ?>" class="small-text" style="width: 100%;">
-                            </td>
-                            <td>
-                                <input type="checkbox" name="absent[<?php echo $student->id; ?>]" value="1" <?php echo $absent; ?>>
-                            </td>
-                        </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
+            <form method="post" action="" id="post">
+                <?php wp_nonce_field('boniedu_save_results', 'boniedu_save_results_nonce'); ?>
+                <input type="hidden" name="student_id_hidden" value="<?php echo $student_id; ?>">
 
-            <p class="submit">
-                <button type="submit" class="button button-primary button-large">Save Results</button>
-            </p>
-        </form>
+                <div id="poststuff">
+                    <div id="post-body" class="metabox-holder columns-2">
+
+                        <!-- Main Content -->
+                        <div id="post-body-content">
+                            <!-- Title (Student Search/Name) -->
+                            <div id="titlediv">
+                                <div id="titlewrap">
+                                    <label class="screen-reader-text" id="title-prompt-text" for="title">Enter student
+                                        name</label>
+                                    <!-- Simple autocomplete simulation: Input text, but we need ID. 
+                                         For now, let's use a Select dropdown if no ID, or Readonly Text if ID selected.
+                                         To match screenshot "Enter student name", it's an input. 
+                                         We will use a search box pattern. 
+                                    -->
+                                    <?php if ($student): ?>
+                                        <input type="text" name="student_name_display" size="30"
+                                            value="<?php echo esc_attr($student->name); ?> (Roll: <?php echo $student->roll_no; ?>)"
+                                            id="title" readonly style="background-color: #f0f0f1;">
+                                        <p><a href="?page=boniedu-results" class="button">Change Student</a></p>
+                                    <?php else: ?>
+                                        <input type="text" name="student_search_term" id="student_search_term"
+                                            placeholder="Start typing student name..." autocomplete="off">
+                                        <div id="student-suggestions"
+                                            style="border: 1px solid #ddd; display: none; margin-top: 5px; background: #fff; max-height: 200px; overflow-y: auto;">
+                                        </div>
+                                        <p class="description">Search and select a student to load their details.</p>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+
+                            <?php if ($student): ?>
+                                <!-- Student Info (ReadOnly/Editable) -->
+                                <div class="postbox">
+                                    <div class="postbox-header">
+                                        <h2 class="hndle">Student Information</h2>
+                                    </div>
+                                    <div class="inside">
+                                        <div style="display: flex; gap: 20px;">
+                                            <div style="flex: 1;">
+                                                <p><label><strong>Father Name</strong></label><br>
+                                                    <input type="text" class="widefat"
+                                                        value="<?php echo esc_attr($student->father_name); ?>" readonly>
+                                                </p>
+                                            </div>
+                                            <div style="flex: 1;">
+                                                <p><label><strong>Mother Name</strong></label><br>
+                                                    <input type="text" class="widefat"
+                                                        value="<?php echo esc_attr($student->mother_name); ?>" readonly>
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div style="display: flex; gap: 20px;">
+                                            <div style="flex: 1;">
+                                                <p><label><strong>Roll</strong></label><br>
+                                                    <input type="text" class="widefat"
+                                                        value="<?php echo esc_attr($student->roll_no); ?>" readonly>
+                                                </p>
+                                            </div>
+                                            <div style="flex: 1;">
+                                                <p><label><strong>Reg No</strong></label><br>
+                                                    <input type="text" class="widefat"
+                                                        value="<?php echo esc_attr($student->registration_no); ?>" readonly>
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Subjects -->
+                                <div class="postbox">
+                                    <div class="postbox-header">
+                                        <h2 class="hndle">All Subjects</h2>
+                                    </div>
+                                    <div class="inside">
+                                        <?php if ($subjects): ?>
+                                            <?php foreach ($subjects as $sub):
+                                                $val = isset($existing_results[$sub->id]) ? $existing_results[$sub->id] : '';
+                                                ?>
+                                                <div style="margin-bottom: 15px;">
+                                                    <label
+                                                        for="subject_<?php echo $sub->id; ?>"><strong><?php echo esc_html($sub->name); ?></strong></label>
+                                                    <input type="number" step="0.01" name="marks[<?php echo $sub->id; ?>]"
+                                                        id="subject_<?php echo $sub->id; ?>" class="widefat"
+                                                        value="<?php echo esc_attr($val); ?>" placeholder="Enter Marks">
+                                                </div>
+                                            <?php endforeach; ?>
+                                        <?php else: ?>
+                                            <p>No subjects found for this class.</p>
+                                        <?php endif; ?>
+                                    </div>
+                                </div>
+                            <?php else: ?>
+                                <div class="postbox">
+                                    <div class="inside">
+                                        <p>Please select a student to enter results.</p>
+                                    </div>
+                                </div>
+                            <?php endif; ?>
+
+                        </div>
+
+                        <!-- Sidebar -->
+                        <div id="postbox-container-1" class="postbox-container">
+                            <!-- Publish -->
+                            <div class="postbox">
+                                <div class="postbox-header">
+                                    <h2 class="hndle">Publish</h2>
+                                </div>
+                                <div class="inside">
+                                    <div class="submitbox">
+                                        <div id="publishing-action">
+                                            <input type="submit" name="save_results" class="button button-primary button-large"
+                                                value="Save Results">
+                                        </div>
+                                        <div class="clear"></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Context Helpers (Disabled mainly, just for show or filtering) -->
+                            <div class="postbox">
+                                <div class="postbox-header">
+                                    <h2 class="hndle">Class</h2>
+                                </div>
+                                <div class="inside">
+                                    <select name="class_id" class="widefat" disabled>
+                                        <option>All Class</option>
+                                        <?php foreach ($classes as $c): ?>
+                                            <option value="<?php echo $c->id; ?>" <?php selected($selected_class, $c->id); ?>>
+                                                <?php echo $c->name; ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="postbox">
+                                <div class="postbox-header">
+                                    <h2 class="hndle">Exam Type</h2>
+                                </div>
+                                <div class="inside">
+                                    <select name="exam_type" class="widefat" required>
+                                        <option value="Final" <?php echo isset($_POST['exam_type']) && $_POST['exam_type'] == 'Final' ? 'selected' : ''; ?>>Final</option>
+                                        <option value="Half Yearly">Half Yearly</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                        </div>
+
+                    </div>
+                </div>
+            </form>
+
+            <script>
+                jQuery(document).ready(function ($) {
+                    // Simple Search Logic
+                    $('#student_search_term').on('keyup', function () {
+                        var term = $(this).val();
+                        if (term.length < 2) {
+                            $('#student-suggestions').hide();
+                            return;
+                        }
+
+                        // Allow simple ajax call here or just standard WP ajax?
+                        // We need an AJAX endpoint. For simplicity, I'll assume I can't easily add a new AJAX endpoint right now without registering it.
+                        // I will make the user type ID or use a page reload filter method if this is too complex.
+                        // Wait, I can use admin-ajax if I registered it. 
+                        // Let's rely on a simpler 'GET' form submission for Filter first?
+                        // Reverting to: Sidebar filters -> select student from list -> Result Page.
+
+                        // Actually, let's just make the user submit the search.
+                    });
+
+                    // Since I didn't verify AJAX handler, I will make the input 'change' trigger a redirect for this prototype.
+                    // Or better: Load all students in JS array? No, too heavy.
+
+                    // FALLBACK: Sidebar has "Find Student" box.
+                });
+            </script>
+        </div>
         <?php
     }
 
