@@ -107,7 +107,12 @@ class StudentListTable extends \WP_List_Table
 
     public function column_photo($item)
     {
-        // Placeholder for Module 11
+        if (!empty($item['photo_id'])) {
+            $img = wp_get_attachment_image_src($item['photo_id'], 'thumbnail');
+            if ($img) {
+                return '<img src="' . esc_url($img[0]) . '" style="width: 40px; height: 40px; object-fit: cover; border-radius: 50%;" />';
+            }
+        }
         return '<div style="width: 40px; height: 40px; background: #ddd; border-radius: 50%;"></div>';
     }
 

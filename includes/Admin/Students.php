@@ -54,6 +54,7 @@ class Students
                 'section_id' => intval($_POST['section_id']),
                 'session_year' => sanitize_text_field($_POST['session_year']),
                 'registration_no' => sanitize_text_field($_POST['registration_no']),
+                'photo_id' => intval($_POST['photo_id']),
                 'updated_at' => current_time('mysql')
             );
 
@@ -62,7 +63,7 @@ class Students
                 $data['created_at'] = current_time('mysql');
             }
 
-            $format = array('%d', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%d', '%s', '%s', '%s', '%s');
+            $format = array('%d', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%d', '%s', '%s', '%d', '%s', '%s');
 
             if (isset($_POST['student_id']) && !empty($_POST['student_id'])) {
                 $id = intval($_POST['student_id']);
@@ -205,7 +206,37 @@ class Students
                 </div>
 
                 <div class="card" style="padding: 20px; margin-top: 20px;">
+                    <h3>Student Photo</h3>
+                    <table class="form-table">
+                        <tr>
+                            <th><label>Photo</label></th>
+                            <td>
+                                <?php
+                                $photo_url = '';
+                                if ($student && $student->photo_id) {
+                                    $img = wp_get_attachment_image_src($student->photo_id, 'thumbnail');
+                                    $photo_url = $img ? $img[0] : '';
+                                }
+                                ?>
+                                <div id="boniedu-photo-preview" style="margin-bottom: 10px;">
+                                    <?php if ($photo_url): ?>
+                                        <img src="<?php echo esc_url($photo_url); ?>" style="max-width: 150px; height: auto;">
+                                    <?php endif; ?>
+                                </div>
+                                <input type="hidden" name="photo_id" id="boniedu-photo-id"
+                                    value="<?php echo $student ? $student->photo_id : ''; ?>">
+                                <button type="button" class="button" id="boniedu-upload-photo">Upload Photo</button>
+                                <button type="button" class="button" id="boniedu-remove-photo"
+                                    style="<?php echo $photo_url ? '' : 'display:none;'; ?>">Remove</button>
+                                <p class="description">Upload or select student photo.</p>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+
+                <div class="card" style="padding: 20px; margin-top: 20px;">
                     <h3>Personal Info</h3>
+                    <!-- ... existing personal info fields ... -->
                     <table class="form-table">
                         <tr>
                             <th><label>Student Name</label></th>
@@ -251,6 +282,38 @@ class Students
                         class="button button-secondary">Cancel</a>
                 </p>
             </form>
+
+            <script>
+                jQuery(document).ready(function ($) {
+                    var mediaUploader;
+                    $('#boniedu-upload-photo').click(function (e) {
+                        e.preventDefault();
+                        if (mediaUploader) {
+                            mediaUploader.open();
+                            return;
+                        }
+                        mediaUploader = wp.media.frames.file_frame = wp.media({
+                            title: 'Select Student Photo',
+                            button: {
+                                text: 'Use this photo'
+                            },
+                            multiple: false
+                        });
+                        mediaUploader.on('select', function () {
+                            var attachment = mediaUploader.state().get('selection').first().toJSON();
+                            $('#boniedu-photo-id').val(attachment.id);
+                            $('#boniedu-photo-preview').html('<img src="' + attachment.url + '" style="max-width: 150px; height: auto;">');
+                            $('#boniedu-remove-photo').show();
+                        });
+                        mediaUploader.open();
+                    });
+                    $('#boniedu-remove-photo').click(function (e) {
+                        $('#boniedu-photo-id').val('');
+                        $('#boniedu-photo-preview').html('');
+                        $(this).hide();
+                    });
+                });
+            </script>
         </div>
         <?php
     }
