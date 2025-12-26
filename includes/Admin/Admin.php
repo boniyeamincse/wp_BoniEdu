@@ -30,6 +30,9 @@ class Admin
 
         require_once BONIEDU_PLUGIN_DIR . 'includes/Admin/Students.php';
         $this->students = new Students($this->plugin_name, $this->version);
+
+        require_once BONIEDU_PLUGIN_DIR . 'includes/Admin/Results.php';
+        $this->results = new Results($this->plugin_name, $this->version);
     }
 
     /**
