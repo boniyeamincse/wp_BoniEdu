@@ -113,9 +113,28 @@ class Admin
             array($this->settings_page, 'display_plugin_setup_page')
         );
 
+        // Students & Add New
+        $this->students->add_submenu();
+        add_submenu_page(
+            $this->plugin_name,
+            'Add Student',
+            'Add Student',
+            'manage_boniedu_academic',
+            'boniedu-students&action=add',
+            array($this->students, 'display_page')
+        );
+
+        // Results
+        $this->results->add_submenu();
+
+        // Classes & Sections
+        $this->classes_sections->add_submenu();
+
+        // Subjects
+        $this->subjects->add_submenu();
+
         // Academic Years - Teacher
-        $this->academic_years->add_submenu(); // This calls internal add_submenu, need to check its capability potentially or just modify it there. Assuming I edit it or it accepts arg. Let's assume I need to edit AcademicYears.php too or override. Wait, I can't override easily. I should edit AcademicYears.php. 
-        // For now, let's update what I can here first.
+        $this->academic_years->add_submenu();
 
         add_submenu_page(
             $this->plugin_name,
