@@ -1,0 +1,69 @@
+<?php
+
+namespace BoniEdu\Admin;
+
+/**
+ * The admin-specific functionality of the plugin.
+ */
+class Admin
+{
+
+    private $plugin_name;
+    private $version;
+    private $settings_page;
+
+    public function __construct($plugin_name, $version)
+    {
+        $this->plugin_name = $plugin_name;
+        $this->version = $version;
+        require_once BONIEDU_PLUGIN_DIR . 'includes/Admin/Settings.php';
+        $this->settings_page = new Settings($this->plugin_name, $this->version);
+    }
+
+    /**
+     * Register the stylesheets for the admin area.
+     */
+    public function enqueue_styles()
+    {
+        // wp_enqueue_style( $this->plugin_name, plugin_dir_url( __FILE__ ) . 'css/boniedu-admin.css', array(), $this->version, 'all' );
+    }
+
+    /**
+     * Register the JavaScript for the admin area.
+     */
+    public function enqueue_scripts()
+    {
+        // wp_enqueue_script( $this->plugin_name, plugin_dir_url( __FILE__ ) . 'js/boniedu-admin.js', array( 'jquery' ), $this->version, false );
+    }
+
+    /**
+     * Register the administration menu for this plugin into the WordPress Dashboard menu.
+     */
+    public function add_plugin_admin_menu()
+    {
+        add_menu_page(
+            'BoniEdu Result Manager',
+            'BoniEdu',
+            'manage_options',
+            $this->plugin_name,
+            array($this->settings_page, 'display_plugin_setup_page'),
+            'dashicons-welcome-learn-more',
+            20
+        );
+
+        add_submenu_page(
+            $this->plugin_name,
+            'Settings',
+            'Settings',
+            'manage_options',
+            $this->plugin_name,
+            array($this->settings_page, 'display_plugin_setup_page')
+        );
+    }
+
+    public function register_settings()
+    {
+        $this->settings_page->register_settings();
+    }
+
+}

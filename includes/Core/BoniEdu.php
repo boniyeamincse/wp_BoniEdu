@@ -39,7 +39,13 @@ class BoniEdu
 
     private function define_admin_hooks()
     {
-        // Admin hooks will be added here
+        require_once BONIEDU_PLUGIN_DIR . 'includes/Admin/Admin.php';
+        $plugin_admin = new \BoniEdu\Admin\Admin($this->get_plugin_name(), $this->get_version());
+
+        $this->loader->add_action('admin_enqueue_scripts', $plugin_admin, 'enqueue_styles');
+        $this->loader->add_action('admin_enqueue_scripts', $plugin_admin, 'enqueue_scripts');
+        $this->loader->add_action('admin_menu', $plugin_admin, 'add_plugin_admin_menu');
+        $this->loader->add_action('admin_init', $plugin_admin, 'register_settings');
     }
 
     private function define_public_hooks()
