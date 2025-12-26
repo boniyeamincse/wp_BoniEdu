@@ -15,6 +15,9 @@ class Deactivator
     {
         // Flush rewrite rules
         flush_rewrite_rules();
+
+        // Remove Custom Roles
+        RoleManager::remove_roles();
     }
 
 }

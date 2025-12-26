@@ -18,6 +18,9 @@ class Activator
 
         // Run Database Migrations
         Migrator::migrate();
+
+        // Add Custom Roles
+        RoleManager::add_roles();
     }
 
 }
